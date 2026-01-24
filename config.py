@@ -23,7 +23,7 @@ class Config:
     # Hugging Face
     HUGGINGFACE_API_TOKEN = os.getenv('HUGGINGFACE_API_TOKEN')
     HF_EMBEDDING_MODEL = os.getenv('HF_EMBEDDING_MODEL', 'sentence-transformers/all-MiniLM-L6-v2')
-    HF_LLM_MODEL = os.getenv('HF_LLM_MODEL', 'mistralai/Mistral-7B-Instruct-v0.2')
+    HF_LLM_MODEL = os.getenv('HF_LLM_MODEL', 'HuggingFaceH4/zephyr-7b-beta')
     HF_SMALLTALK_MODEL = os.getenv('HF_SMALLTALK_MODEL', 'google/flan-t5-small')
     
     # Uploads
