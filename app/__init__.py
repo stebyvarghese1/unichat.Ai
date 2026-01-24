@@ -4,6 +4,8 @@ from flask_sqlalchemy import SQLAlchemy
 from config import Config
 import threading
 import time
+import os
+import logging
 
 db = SQLAlchemy()
 
