@@ -12,3 +12,4 @@ python-pptx
 werkzeug
 bcrypt
 supabase
+gunicorn
