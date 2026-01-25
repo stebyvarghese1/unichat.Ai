@@ -68,6 +68,7 @@ def create_app(config_class=Config):
                     # Save the rebuilt index to Supabase storage
                     vector_store.save_index(index_name)
                     print(f"Rebuilt and saved vector index to Supabase storage with {len(chunks)} chunks")
+                    print(f"Vector store stats after rebuild: {vector_store.get_stats()}")
             except Exception as e:
                 print(f"Index rebuild skipped: {e}")
         
