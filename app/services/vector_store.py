@@ -13,6 +13,8 @@ class VectorStore:
             cls._instance.index = None
             cls._instance.chunks = [] # Store metadata/text mapping
             cls._instance.dimension = 384 # Default for all-MiniLM-L6-v2
+            # Ensure index is initialized
+            cls._instance.initialize_index(cls._instance.dimension)
         return cls._instance
 
     def initialize_index(self, dimension=384):
@@ -27,9 +29,13 @@ class VectorStore:
         embeddings: list of floats or numpy array
         chunks_metadata: list of dicts containing text and other info
         """
+        # Ensure index is initialized
         if self.index is None:
-            self.initialize_index(len(embeddings[0]))
-            
+            if embeddings and len(embeddings) > 0:
+                self.initialize_index(len(embeddings[0]))
+            else:
+                self.initialize_index(self.dimension)
+        
         vectors = np.array(embeddings).astype('float32')
         self.index.add(vectors)
         self.chunks.extend(chunks_metadata)
@@ -78,7 +84,11 @@ class VectorStore:
         self.chunks = new_chunks
 
     def search(self, query_vector, k=5):
-        if self.index is None or self.index.ntotal == 0:
+        # Ensure index is initialized
+        if self.index is None:
+            self.initialize_index(self.dimension)
+        
+        if self.index.ntotal == 0:
             return []
             
         vector = np.array([query_vector]).astype('float32')
@@ -94,13 +104,15 @@ class VectorStore:
         return results
 
     def clear(self):
-        self.index = None
         self.chunks = []
         self.initialize_index(self.dimension)
 
     def get_stats(self):
+        total_vectors = 0
+        if self.index is not None:
+            total_vectors = self.index.ntotal if hasattr(self.index, 'ntotal') else 0
         return {
-            'total_vectors': self.index.ntotal if self.index else 0,
+            'total_vectors': total_vectors,
             'dimension': self.dimension
         }
     
