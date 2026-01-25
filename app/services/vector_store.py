@@ -229,3 +229,10 @@ class VectorStore:
                 return False
         except Exception:
             return False
+
+    @classmethod
+    def get_instance(cls):
+        """Get the singleton instance of VectorStore"""
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
