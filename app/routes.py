@@ -506,8 +506,8 @@ def query():
             # Check if the index has vectors before applying distance filtering
             stats = vector_store.get_stats()
             if stats['total_vectors'] == 0:
-                logging.info("Vector store has 0 vectors - no documents indexed")
-                return jsonify({'answer': 'No documents have been indexed yet. Please ensure documents are processed and index is rebuilt.', 'sources': []})
+                logging.warning("Vector store has 0 vectors - no documents indexed")
+                return jsonify({'answer': 'Vector index empty — rebuild failed or no documents processed', 'sources': []})
             
             # Log sample document vectors for comparison
             if hasattr(vector_store, 'chunks') and vector_store.chunks:
