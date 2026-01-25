@@ -452,166 +452,182 @@ def admin_account():
 @bp.route('/api/query', methods=['POST'])
 @login_required
 def query():
-    data = request.json
-    question = data.get('question')
-    course = (data.get('course') or session.get('pref_course') or '').strip()
-    semester = (data.get('semester') or session.get('pref_semester') or '').strip()
-    subject = (data.get('subject') or session.get('pref_subject') or '').strip()
-    
-    if not question:
-        return jsonify({'error': 'No question provided'}), 400
-        
     try:
-        from app.services.ai_service import AIService
-        if AIService.is_smalltalk(question):
-            answer = AIService.generate_smalltalk(question)
-            return jsonify({'answer': answer, 'sources': []})
-        # 1. Embed question
-        q_embedding = AIService.get_embeddings([question])
-        # get_embeddings returns list of list (batch), we need the first one if it's a list
-        if isinstance(q_embedding, list) and len(q_embedding) > 0:
-             # Handle varying return types from HF API (sometimes list of float, sometimes list of list)
-             if isinstance(q_embedding[0], list):
-                 q_vec = q_embedding[0]
-             else:
-                 q_vec = q_embedding
-             logging.info(f"Successfully embedded question. Vector length: {len(q_vec)}")
-             logging.info(f"Question embedding sample: {q_vec[:5] if len(q_vec) >= 5 else q_vec}")
-        else:
-             logging.error(f"Failed to embed question. Response: {q_embedding}")
-             return jsonify({'error': 'Failed to embed question'}), 500
-
-        # 2. Search
-        from app.services.vector_store import VectorStore
-        vector_store = VectorStore.get_instance()
+        data = request.json
+        question = (data.get('question') or '').strip()
+        course = (data.get('course') or session.get('pref_course') or '').strip()
+        semester = (data.get('semester') or session.get('pref_semester') or '').strip()
+        subject = (data.get('subject') or session.get('pref_subject') or '').strip()
         
-        # Debug: Check vector store status
-        logging.info(f"Vector store stats: {vector_store.get_stats()}")
-        logging.info(f"Query vector length: {len(q_vec) if q_vec else 'None'}")
-        logging.info(f"Number of chunks in vector store: {len(vector_store.chunks) if hasattr(vector_store, 'chunks') else 'No chunks attr'}")
-        
-        # Log the actual query vector for debugging
-        if q_vec is not None:
-            logging.info(f"Query vector sample (first 5 values): {q_vec[:5] if len(q_vec) >= 5 else q_vec}")
-            logging.info(f"Query vector magnitude: {sum(x*x for x in q_vec)**0.5}")
-        
-        results = vector_store.search(q_vec, k=8)
-        logging.info(f"Vector search returned {len(results)} results")
-        
-        # Check if the index has vectors before applying distance filtering
-        stats = vector_store.get_stats()
-        if stats['total_vectors'] == 0:
-            logging.info("Vector store has 0 vectors - no documents indexed")
-            return jsonify({'answer': 'No documents have been indexed yet. Please ensure documents are processed and index is rebuilt.', 'sources': []})
-        
-        # Log sample document vectors for comparison
-        if hasattr(vector_store, 'chunks') and vector_store.chunks:
-            sample_chunk = vector_store.chunks[0] if vector_store.chunks else None
-            if sample_chunk and 'text' in sample_chunk:
-                logging.info(f"Sample document chunk text: {sample_chunk['text'][:100]}...")
-        
-        # Filter low-confidence matches by distance threshold; if empty, fallback to top results
-        filtered = [r for r in results if r.get('distance') is not None and r['distance'] <= Config.VECTOR_MAX_DISTANCE]
-        logging.info(f"Filtered results: {len(filtered)} within distance threshold of {Config.VECTOR_MAX_DISTANCE}")
-        
-        # Log some sample distances for debugging
-        if results:
-            sample_distances = [r.get('distance') for r in results[:5]]
-            logging.info(f"Sample distances from search results: {sample_distances}")
-            logging.info(f"All distances: {[r.get('distance') for r in results]}")
-        
-        # If no results within threshold, fallback to all results
-        if not filtered and results:
-            logging.info(f"Falling back to all {len(results)} results as none met distance threshold {Config.VECTOR_MAX_DISTANCE}")
-            filtered = results
-        
-        # If we still don't have filtered results but have search results, take the closest one as final fallback
-        if not filtered and results:
-            closest_result = min(results, key=lambda x: x.get('distance', float('inf')))
-            if closest_result:
-                logging.info(f"Taking closest result with distance: {closest_result.get('distance')}")
-                filtered = [closest_result]
-        
-        # Apply course/semester/subject filters if provided
-        doc_map = {d.id: d for d in Document.query.all()}
-        logging.info(f"Total documents in system: {len(doc_map)}")
-        
-        if course or semester or subject:
-            def match_cat(r):
-                did = r.get('doc_id')
-                d = doc_map.get(did)
-                if not d:
-                    return False
-                ok_course = True if not course else ((d.course or '').strip().lower() == course.lower())
-                ok_sem = True if not semester else ((d.semester or '').strip().lower() == semester.lower())
-                ok_subj = True if not subject else ((d.subject or '').strip().lower() == subject.lower())
-                return ok_course and ok_sem and ok_subj
-            filtered = [r for r in filtered if match_cat(r)]
-            if not filtered:
-                return jsonify({'answer': 'Not available in selected category (No context found).', 'sources': []})
-        
-        if not filtered:
-            # Check if there are documents at all
-            all_docs = Document.query.all()
-            if len(all_docs) == 0:
-                return jsonify({'answer': 'No documents have been uploaded yet.', 'sources': []})
-            else:
-                # More specific logging for debugging
-                logging.info(f"All documents: {[d.filename for d in all_docs]}")
-                logging.info(f"All document statuses: {[d.status for d in all_docs]}")
-                logging.info(f"Chunks in vector store: {len(vector_store.chunks) if hasattr(vector_store, 'chunks') else 'No chunks attr'}")
-                logging.info(f"Sample of vector store chunks: {vector_store.chunks[:2] if hasattr(vector_store, 'chunks') and vector_store.chunks else 'No chunks'}")
-                return jsonify({'answer': 'Not available in uploaded documents (No context found).', 'sources': []})
+        if not question:
+            return jsonify({'error': 'No question provided'}), 400
             
-        # 3. Generate Answer
-        context = "\n\n".join([r['text'] for r in filtered])
-        answer = AIService.generate_answer(question, context)
-        # Deduplicate sources by doc_id
-        unique = {}
-        for r in filtered:
-            key = r.get('doc_id')
-            if key is None:
-                key = f"unknown-{id(r)}"
-            if key not in unique:
-                # Prefer filename from metadata; if missing, pull from DB
-                fn = r.get('filename')
-                if not fn and isinstance(key, int) and key in doc_map:
-                    fn = doc_map[key].filename
-                url = r.get('url')
-                if not url and isinstance(key, int) and key in doc_map:
-                    # Compute public URL from stored path
-                    try:
-                        supa = SupabaseService()
-                        url = supa.get_public_url(doc_map[key].file_path)
-                    except Exception:
-                        url = None
-                unique[key] = {
-                    'doc_id': r.get('doc_id'),
-                    'filename': fn,
-                    'url': url
-                }
-        sources = list(unique.values())
-        try:
-            msg = ChatMessage(
-                user_id=session['user_id'],
-                question=question,
-                answer=answer,
-                course=course or None,
-                semester=semester or None,
-                subject=subject or None,
-                sources_json=json.dumps(sources)
-            )
-            db.session.add(msg)
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-        return jsonify({
-            'answer': answer,
-            'sources': sources
-        })
+        logging.info(f"Processing query: '{question}' with filters - Course: {course}, Semester: {semester}, Subject: {subject}")
         
+        try:
+            from app.services.ai_service import AIService
+            if AIService.is_smalltalk(question):
+                answer = AIService.generate_smalltalk(question)
+                logging.info("Returning smalltalk response")
+                return jsonify({'answer': answer, 'sources': []})
+            
+            # 1. Embed question
+            q_embedding = AIService.get_embeddings([question])
+            # get_embeddings returns list of list (batch), we need the first one if it's a list
+            if isinstance(q_embedding, list) and len(q_embedding) > 0:
+                 # Handle varying return types from HF API (sometimes list of float, sometimes list of list)
+                 if isinstance(q_embedding[0], list):
+                     q_vec = q_embedding[0]
+                 else:
+                     q_vec = q_embedding
+                 logging.info(f"Successfully embedded question. Vector length: {len(q_vec)}")
+                 logging.info(f"Question embedding sample: {q_vec[:5] if len(q_vec) >= 5 else q_vec}")
+            else:
+                 logging.error(f"Failed to embed question. Response: {q_embedding}")
+                 return jsonify({'error': 'Failed to embed question'}), 500
+
+            # 2. Search
+            from app.services.vector_store import VectorStore
+            vector_store = VectorStore.get_instance()
+            
+            # Debug: Check vector store status
+            logging.info(f"Vector store stats: {vector_store.get_stats()}")
+            logging.info(f"Query vector length: {len(q_vec) if q_vec else 'None'}")
+            logging.info(f"Number of chunks in vector store: {len(vector_store.chunks) if hasattr(vector_store, 'chunks') else 'No chunks attr'}")
+            
+            # Log the actual query vector for debugging
+            if q_vec is not None:
+                logging.info(f"Query vector sample (first 5 values): {q_vec[:5] if len(q_vec) >= 5 else q_vec}")
+                logging.info(f"Query vector magnitude: {sum(x*x for x in q_vec)**0.5}")
+            
+            results = vector_store.search(q_vec, k=8)
+            logging.info(f"Vector search returned {len(results)} results")
+            
+            # Check if the index has vectors before applying distance filtering
+            stats = vector_store.get_stats()
+            if stats['total_vectors'] == 0:
+                logging.info("Vector store has 0 vectors - no documents indexed")
+                return jsonify({'answer': 'No documents have been indexed yet. Please ensure documents are processed and index is rebuilt.', 'sources': []})
+            
+            # Log sample document vectors for comparison
+            if hasattr(vector_store, 'chunks') and vector_store.chunks:
+                sample_chunk = vector_store.chunks[0] if vector_store.chunks else None
+                if sample_chunk and 'text' in sample_chunk:
+                    logging.info(f"Sample document chunk text: {sample_chunk['text'][:100]}...")
+            
+            # Filter low-confidence matches by distance threshold; if empty, fallback to top results
+            filtered = [r for r in results if r.get('distance') is not None and r['distance'] <= Config.VECTOR_MAX_DISTANCE]
+            logging.info(f"Filtered results: {len(filtered)} within distance threshold of {Config.VECTOR_MAX_DISTANCE}")
+            
+            # Log some sample distances for debugging
+            if results:
+                sample_distances = [r.get('distance') for r in results[:5]]
+                logging.info(f"Sample distances from search results: {sample_distances}")
+                logging.info(f"All distances: {[r.get('distance') for r in results]}")
+            
+            # If no results within threshold, fallback to all results
+            if not filtered and results:
+                logging.info(f"Falling back to all {len(results)} results as none met distance threshold {Config.VECTOR_MAX_DISTANCE}")
+                filtered = results
+            
+            # If we still don't have filtered results but have search results, take the closest one as final fallback
+            if not filtered and results:
+                closest_result = min(results, key=lambda x: x.get('distance', float('inf')))
+                if closest_result:
+                    logging.info(f"Taking closest result with distance: {closest_result.get('distance')}")
+                    filtered = [closest_result]
+            
+            # Apply course/semester/subject filters if provided
+            doc_map = {d.id: d for d in Document.query.all()}
+            logging.info(f"Total documents in system: {len(doc_map)}")
+            
+            if course or semester or subject:
+                def match_cat(r):
+                    did = r.get('doc_id')
+                    d = doc_map.get(did)
+                    if not d:
+                        return False
+                    ok_course = True if not course else ((d.course or '').strip().lower() == course.lower())
+                    ok_sem = True if not semester else ((d.semester or '').strip().lower() == semester.lower())
+                    ok_subj = True if not subject else ((d.subject or '').strip().lower() == subject.lower())
+                    return ok_course and ok_sem and ok_subj
+                filtered = [r for r in filtered if match_cat(r)]
+                if not filtered:
+                    return jsonify({'answer': 'Not available in selected category (No context found).', 'sources': []})
+            
+            if not filtered:
+                # Check if there are documents at all
+                all_docs = Document.query.all()
+                if len(all_docs) == 0:
+                    return jsonify({'answer': 'No documents have been uploaded yet.', 'sources': []})
+                else:
+                    # More specific logging for debugging
+                    logging.info(f"All documents: {[d.filename for d in all_docs]}")
+                    logging.info(f"All document statuses: {[d.status for d in all_docs]}")
+                    logging.info(f"Chunks in vector store: {len(vector_store.chunks) if hasattr(vector_store, 'chunks') else 'No chunks attr'}")
+                    logging.info(f"Sample of vector store chunks: {vector_store.chunks[:2] if hasattr(vector_store, 'chunks') and vector_store.chunks else 'No chunks'}")
+                    return jsonify({'answer': 'Not available in uploaded documents (No context found).', 'sources': []})
+                
+            # 3. Generate Answer
+            context = "\n\n".join([r['text'] for r in filtered])
+            logging.info(f"Generated context from {len(filtered)} results. Context length: {len(context)}")
+            answer = AIService.generate_answer(question, context)
+            
+            # Deduplicate sources by doc_id
+            unique = {}
+            for r in filtered:
+                key = r.get('doc_id')
+                if key is None:
+                    key = f"unknown-{id(r)}"
+                if key not in unique:
+                    # Prefer filename from metadata; if missing, pull from DB
+                    fn = r.get('filename')
+                    if not fn and isinstance(key, int) and key in doc_map:
+                        fn = doc_map[key].filename
+                    url = r.get('url')
+                    if not url and isinstance(key, int) and key in doc_map:
+                        # Compute public URL from stored path
+                        try:
+                            supa = SupabaseService()
+                            url = supa.get_public_url(doc_map[key].file_path)
+                        except Exception:
+                            url = None
+                    unique[key] = {
+                        'doc_id': r.get('doc_id'),
+                        'filename': fn,
+                        'url': url
+                    }
+            sources = list(unique.values())
+            
+            try:
+                msg = ChatMessage(
+                    user_id=session['user_id'],
+                    question=question,
+                    answer=answer,
+                    course=course or None,
+                    semester=semester or None,
+                    subject=subject or None,
+                    sources_json=json.dumps(sources)
+                )
+                db.session.add(msg)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+            
+            logging.info(f"Query processed successfully. Answer length: {len(answer)}, Sources: {len(sources)}")
+            return jsonify({
+                'answer': answer,
+                'sources': sources
+            })
+            
+        except Exception as e:
+            logging.error(f"Error in query processing: {str(e)}", exc_info=True)
+            return jsonify({'error': f'Query processing failed: {str(e)}'}), 500
+            
     except Exception as e:
+        logging.error(f"General error in query endpoint: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
+
 @bp.route('/api/chat/history', methods=['GET'])
 @login_required
 def chat_history():
