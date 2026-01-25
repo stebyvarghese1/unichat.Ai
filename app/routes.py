@@ -10,6 +10,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 import os
 import functools
 import json
+import logging
 from config import Config
 from sqlalchemy.exc import ProgrammingError
 
@@ -485,7 +486,6 @@ def query():
         vector_store = VectorStore.get_instance()
         
         # Debug: Check vector store status
-        import logging
         logging.info(f"Vector store stats: {vector_store.get_stats()}")
         logging.info(f"Query vector length: {len(q_vec) if q_vec else 'None'}")
         logging.info(f"Number of chunks in vector store: {len(vector_store.chunks) if hasattr(vector_store, 'chunks') else 'No chunks attr'}")
@@ -493,7 +493,7 @@ def query():
         # Log the actual query vector for debugging
         if q_vec is not None:
             logging.info(f"Query vector sample (first 5 values): {q_vec[:5] if len(q_vec) >= 5 else q_vec}")
-            logging.info(f"Query vector magnitude: {sum(x*x for x in q_vec)**00.5}")
+            logging.info(f"Query vector magnitude: {sum(x*x for x in q_vec)**0.5}")
         
         results = vector_store.search(q_vec, k=8)
         logging.info(f"Vector search returned {len(results)} results")
