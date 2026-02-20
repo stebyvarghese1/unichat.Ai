@@ -53,7 +53,7 @@
   <table>
     <tr>
       <td width="50%" align="center"><b>Student Interface (Dark Mode)</b></td>
-      <td width="50%" align="center"><b>Session Management</b></td>
+      <td width="50%" align="center"><b>User Profile</b></td>
     </tr>
     <tr>
       <td><img src="https://github.com/user-attachments/assets/0e5e7c8e-5e8c-4174-afce-5df3b5223793" alt="Chat UI" /></td>
