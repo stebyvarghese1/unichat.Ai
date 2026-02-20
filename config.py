@@ -33,8 +33,8 @@ class Config:
     ALLOWED_EXTENSIONS = {'pdf', 'docx', 'pptx'}
 
     # Admin
-    ADMIN_EMAIL = os.getenv('ADMIN_EMAIL', 'admin@university.edu')
-    ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'admin')
+    ADMIN_EMAIL = os.getenv('ADMIN_EMAIL')
+    ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD')
 
     # Startup behavior
     AUTO_REBUILD_INDEX = os.getenv('AUTO_REBUILD_INDEX', 'true').lower() == 'true'
