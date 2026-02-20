@@ -16,7 +16,6 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-3EC189?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
 
 
-
 </div>
 
 ---
@@ -67,35 +66,24 @@
 
 ---
 
-## 🛠️ The Powerhouse Tech Stack
+## 🛠️ System Architecture Flow
 
-```mermaid
-graph TD
-    subgraph "Frontend Layer"
-        UI[Tailwind CSS + Vanilla JS]
-    end
-    subgraph "Logic Layer"
-        APP[Flask Framework]
-        DB[SQLAlchemy ORM]
-    end
-    subgraph "AI Core (Hugging Face)"
-        LLM[Mistral-7B / Zephyr-7B]
-        EMB[all-MiniLM-L6-v2]
-        VIS[Salesforce BLIP VLM]
-    end
-    subgraph "Storage & Indexing"
-        VEC[FAISS In-Memory Vector Store]
-        SUPA[Supabase Postgres + Storage]
-    end
-
-    UI <--> APP
-    APP <--> DB
-    APP <--> LLM
-    APP <--> EMB
-    APP <--> VIS
-    DB <--> SUPA
-    EMB --> VEC
+```text
+[ User Interface ] <---> [ Flask Backend ] <---> [ Hugging Face API ]
+       ^                        |                       |
+       |                        v                       v
+[ Desktop/Mobile ]      [ SQLAlchemy ORM ]      [ AI Model Inference ]
+                                |                       |
+                                v                       v
+                        [ Supabase DB ] <--- [ FAISS Vector Store ]
 ```
+
+### ⚙️ How Data Flows
+*   **Step 1: Ingestion** ➔ Documents are parsed and converted into semantic vectors via `sentence-transformers`.
+*   **Step 2: ephemeral Storage** ➔ Vectors are loaded into an **In-Memory FAISS index** for sub-millisecond retrieval.
+*   **Step 3: Querying** ➔ User questions are embedded and matched against the FAISS index to find the most relevant context.
+*   **Step 4: Synthesis** ➔ The Flask API sends the context to a hosted **Mistral/Zephyr LLM** to generate a grounded response.
+*   **Step 5: Visuals** ➔ Images are described using **VLM (BLIP)** before being passed to the chat logic.
 
 ---
 
