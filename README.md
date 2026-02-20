@@ -1,6 +1,7 @@
 # 🤖 UniBot.ai - Admin-Controlled Academic RAG Chatbot
 
-![Banner Placeholder](https://via.placeholder.com/1200x400/0f172a/ffffff?text=UniBot.ai+-+Intelligent+Academic+Assistant)
+![Banner Placeholder](<img width="268" height="223" alt="Screenshot 2026-02-20 223431" src="https://github.com/user-attachments/assets/c1212640-997a-47e3-ac88-2ead407be98e" />
+)
 
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-2.0+-000000?style=for-the-badge&logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
@@ -38,7 +39,11 @@
 
 | Student Chat Interface | Admin Dashboard |
 | :---: | :---: |
-| ![Chat UI](https://via.placeholder.com/600x400/1e293b/ffffff?text=Student+Chat+UI+Demo) | ![Admin Dashboard](https://via.placeholder.com/600x400/1e293b/ffffff?text=Admin+Portal+Demo) |
+| ![Chat UI](<img width="1919" height="909" alt="Screenshot 2026-02-20 224008" src="https://github.com/user-attachments/assets/0e5e7c8e-5e8c-4174-afce-5df3b5223793" />
+)(<img width="1919" height="908" alt="Screenshot 2026-02-20 224056" src="https://github.com/user-attachments/assets/19cd26a4-9c0d-491e-b577-8eed0cc819b8" />
+) | ![![Uploading Screenshot 2026-02-20 224008.png…]()
+Admin Dashboard](<img width="1919" height="900" alt="Screenshot 2026-02-20 224416" src="https://github.com/user-attachments/assets/672b98f1-bb55-4406-9191-166141092e80" />
+) |
 | *Modern Dark Theme* | *Document Management* |
 
 ---
@@ -119,11 +124,6 @@
 5. **Generate**: A hosted LLM (Mistral/Zephyr) uses the retrieved chunks as context to generate an accurate answer.
 6. **Fallback**: If the primary model fails or no relevant information is found, the system uses a fallback model or politely informs the user.
 
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
 
 ---
 
